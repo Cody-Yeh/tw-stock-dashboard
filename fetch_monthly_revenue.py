@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from datetime import datetime
 
-from f=FinMind.data import DataLoader
+from FinMind.data import DataLoader
 
 def fetch_all(groups_csv: str, years: int = 3) -> dict:
     df = pd.read_csv(groups_csv)
