@@ -47,7 +47,6 @@ def load_excel_dashboard(xlsx_path: str) -> dict:
 
 @st.cache_data(show_spinner=True, ttl=24*3600)
 def fetch_monthly_revenue_finmind(ticker: str, years: int = 3) -> pd.DataFrame:
-    # 這裡要用大寫版本的匯入
     from FinMind.data import DataLoader
     token = os.environ.get("FINMIND_TOKEN")
     dl = DataLoader()
@@ -60,22 +59,29 @@ def fetch_monthly_revenue_finmind(ticker: str, years: int = 3) -> pd.DataFrame:
         return pd.DataFrame(columns=["ticker","name","date","revenue"])
 
     out = raw.rename(columns={
-        "stock_id": "ticker",
-        "Revenue":  "revenue",
-        "revenue":  "revenue",
-        "date":     "date",
-        "stock_name":"name",
+        "stock_id":   "ticker",
+        "Revenue":    "revenue",
+        "revenue":    "revenue",
+        "date":       "date",
+        "stock_name": "name",
     })
     out["ticker"] = out["ticker"].astype(str)
     out["date"]   = pd.to_datetime(out["date"]).dt.date
 
-    # 若 API 沒帶公司名，就用 groups.csv 裡的名字來補
+    # ① 這裡是重點：API 沒帶公司名時，用 groups.csv 裡的 name 來補
+    name_map = groups_df.set_index("ticker")["name"].astype(str).to_dict()
     if "name" not in out.columns or out["name"].isna().all():
-        name_map = groups_df.set_index("ticker")["name"].astype(str).to_dict()
         out["name"] = out["ticker"].map(name_map)
 
-    out = out[["ticker","name","date","revenue"]].sort_values("date").reset_index(drop=True)
+    # ② 保證欄位齊全
+    need = ["ticker","name","date","revenue"]
+    for c in need:
+        if c not in out.columns:
+            out[c] = np.nan
+
+    out = out[need].sort_values("date").reset_index(drop=True)
     return out
+
 
 
 # 以 Excel → 優先；若無該族群資料 → FinMind 即時抓
