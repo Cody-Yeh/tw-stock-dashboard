@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 
 # ========== 基本設定 ==========
 st.set_page_config(page_title="台股多族群月營收儀表板", layout="wide")
-st.title("📊 威廷的股票網站")
+st.title("威廷的股票網站")
 
 DATA_XLSX = "sector_dashboard.xlsx"  # 可由排程自動更新
 GROUPS_CSV = "groups.csv"            # 定義族群與個股
