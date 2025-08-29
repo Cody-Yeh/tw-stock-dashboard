@@ -8,6 +8,7 @@ def fetch_all(groups_csv: str, years: int = 3) -> dict:
     df = pd.read_csv(groups_csv)
     df.columns = [c.strip().lower() for c in df.columns]
     sectors = sorted(df["sector"].unique())
+    name_map = df.set_index("ticker")["name"].astype(str).to_dict()
 
     token = os.environ.get("FINMIND_TOKEN", None)
     dl = DataLoader()
