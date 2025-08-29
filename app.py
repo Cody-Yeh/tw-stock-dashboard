@@ -45,41 +45,38 @@ def load_excel_dashboard(xlsx_path: str) -> dict:
             sheets[sheet] = df
     return sheets
 
-# FinMind 抓月營收（近 N 年）
 @st.cache_data(show_spinner=True, ttl=24*3600)
 def fetch_monthly_revenue_finmind(ticker: str, years: int = 3) -> pd.DataFrame:
-    try:
-        from FinMind.data import DataLoader
-    except Exception as e:
-        st.error("未安裝 finmind，請先在 requirements.txt 中包含 finmind。")
-        raise
-
-    # 可選：環境變數 FINMIND_TOKEN；若無，匿名也能抓部分資料
-    token = os.environ.get("FINMIND_TOKEN", None)
+    # 這裡要用大寫版本的匯入
+    from FinMind.data import DataLoader
+    token = os.environ.get("FINMIND_TOKEN")
     dl = DataLoader()
     if token:
         dl.login_by_token(api_token=token)
 
     start = (datetime.today().date().replace(day=1) - timedelta(days=365*years))
-    df = dl.taiwan_stock_month_revenue(stock_id=ticker, start_date=start.isoformat())
+    raw = dl.taiwan_stock_month_revenue(stock_id=str(ticker), start_date=start.isoformat())
+    if raw.empty:
+        return pd.DataFrame(columns=["ticker","name","date","revenue"])
 
-    if df.empty:
-        return pd.DataFrame(columns=["ticker","name","date","revenue"]) 
+    out = raw.rename(columns={
+        "stock_id": "ticker",
+        "Revenue":  "revenue",
+        "revenue":  "revenue",
+        "date":     "date",
+        "stock_name":"name",
+    })
+    out["ticker"] = out["ticker"].astype(str)
+    out["date"]   = pd.to_datetime(out["date"]).dt.date
 
-    # 轉欄位：date/revenue
-    out = (
-        df.rename(columns={
-            "stock_id":"ticker",
-            "Revenue":"revenue",
-            "date":"date",
-            "stock_name":"name",
-        })[["ticker","name","date","revenue"]]
-        .assign(date=lambda d: pd.to_datetime(d["date"]).dt.date)
-        .dropna()
-        .sort_values("date")
-        .reset_index(drop=True)
-    )
+    # 若 API 沒帶公司名，就用 groups.csv 裡的名字來補
+    if "name" not in out.columns or out["name"].isna().all():
+        name_map = groups_df.set_index("ticker")["name"].astype(str).to_dict()
+        out["name"] = out["ticker"].map(name_map)
+
+    out = out[["ticker","name","date","revenue"]].sort_values("date").reset_index(drop=True)
     return out
+
 
 # 以 Excel → 優先；若無該族群資料 → FinMind 即時抓
 @st.cache_data(show_spinner=False, ttl=12*3600)
