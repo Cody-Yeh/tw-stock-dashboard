@@ -147,19 +147,30 @@ with tab1:
     if sector_df.empty:
         st.info("此族群目前沒有資料。請確認 groups.csv 與 Excel/FinMind。")
     else:
-       latest = sector_df.sort_values("date").groupby("ticker").tail(1).copy()
+        latest = sector_df.sort_values("date").groupby("ticker").tail(1).copy()
 
-       if "name" not in latest.columns or latest["name"].isna().all():
-       latest = latest.merge(groups_df[["ticker","name"]], on="ticker", how="left")
-        # KPI 表
+        # 用 groups.csv 準備 ticker→name 對照
+        name_map = groups_df.set_index("ticker")["name"]
+
+        # 只有在沒有 name 欄位，才進行 merge（避免產生 name_x/name_y）
+        if "name" not in latest.columns or latest["name"].isna().all():
+            latest = latest.merge(groups_df[["ticker","name"]], on="ticker", how="left")
+        else:
+            # 已有 name 欄位就用 map 補空值，避免 KeyError
+            latest["name"] = latest["name"].fillna(latest["ticker"].map(name_map))
+        # 保證要顯示的欄位一定存在（缺的會自動補 NaN，而不會 KeyError）
         show_cols = ["ticker","name","date","revenue","revenue_mom","revenue_yoy"]
-        st.dataframe(latest[show_cols].rename(columns={
-            "date":"最新月份",
-            "revenue":"當月營收",
-            "revenue_mom":"MoM",
-            "revenue_yoy":"YoY",
-        }), use_container_width=True)
+        latest = latest.reindex(columns=show_cols)
 
+        st.dataframe(
+            latest.rename(columns={
+                "date": "最新月份",
+                "revenue": "當月營收",
+                "revenue_mom": "MoM",
+                "revenue_yoy": "YoY",
+            }),
+            use_container_width=True
+        )
         # 各股營收走勢 (疊圖)
         fig = px.line(
             sector_df,
