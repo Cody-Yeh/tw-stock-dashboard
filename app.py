@@ -49,7 +49,7 @@ def load_excel_dashboard(xlsx_path: str) -> dict:
 @st.cache_data(show_spinner=True, ttl=24*3600)
 def fetch_monthly_revenue_finmind(ticker: str, years: int = 3) -> pd.DataFrame:
     try:
-        from finmind.data import DataLoader
+        from FinMind.data import DataLoader
     except Exception as e:
         st.error("未安裝 finmind，請先在 requirements.txt 中包含 finmind。")
         raise
