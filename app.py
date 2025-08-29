@@ -147,8 +147,10 @@ with tab1:
     if sector_df.empty:
         st.info("此族群目前沒有資料。請確認 groups.csv 與 Excel/FinMind。")
     else:
-        latest = sector_df.sort_values("date").groupby("ticker").tail(1)
-        latest = latest.merge(groups_df[["ticker","name"]], on="ticker", how="left")
+       latest = sector_df.sort_values("date").groupby("ticker").tail(1).copy()
+
+       if "name" not in latest.columns or latest["name"].isna().all():
+       latest = latest.merge(groups_df[["ticker","name"]], on="ticker", how="left")
         # KPI 表
         show_cols = ["ticker","name","date","revenue","revenue_mom","revenue_yoy"]
         st.dataframe(latest[show_cols].rename(columns={
