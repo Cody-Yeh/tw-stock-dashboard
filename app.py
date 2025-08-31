@@ -251,9 +251,11 @@ with tab2:
             if not ohlc.empty:
                 mask = (ohlc["date"] >= start_sel) & (ohlc["date"] <= end_sel)
                 ohlc_sel = ohlc.loc[mask].copy()
-             # 移動平均（可選）
+                # 計算移動平均線
                 ohlc_sel["ma5"]  = pd.Series(ohlc_sel["close"]).rolling(5).mean()
+                ohlc_sel["ma10"] = pd.Series(ohlc_sel["close"]).rolling(10).mean()
                 ohlc_sel["ma20"] = pd.Series(ohlc_sel["close"]).rolling(20).mean()
+                ohlc_sel["ma60"] = pd.Series(ohlc_sel["close"]).rolling(60).mean()
 
                 fig_k = go.Figure()
                 fig_k.add_trace(go.Candlestick(
@@ -264,8 +266,12 @@ with tab2:
                     close=ohlc_sel["close"],
                     name="K線"
                 ))
+
+                # 加入均線
                 fig_k.add_trace(go.Scatter(x=ohlc_sel["date"], y=ohlc_sel["ma5"],  mode="lines", name="MA5"))
+                fig_k.add_trace(go.Scatter(x=ohlc_sel["date"], y=ohlc_sel["ma10"], mode="lines", name="MA10"))
                 fig_k.add_trace(go.Scatter(x=ohlc_sel["date"], y=ohlc_sel["ma20"], mode="lines", name="MA20"))
+                fig_k.add_trace(go.Scatter(x=ohlc_sel["date"], y=ohlc_sel["ma60"], mode="lines", name="MA60"))
 
                 fig_k.update_layout(
                     title=f"{ticker} {name} K 線圖（含 MA5/MA20）",
