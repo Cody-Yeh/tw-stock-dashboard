@@ -9,7 +9,7 @@ import streamlit as st
 from datetime import datetime, timedelta
 
 # ========== 基本設定 ==========
-st.set_page_config(page_title="台股多族群月營收儀表板", layout="wide")
+st.set_page_config(page_title="台股研究網站", layout="wide")
 st.title("威廷的股票網站")
 
 DATA_XLSX = "sector_dashboard.xlsx"  # 可由排程自動更新
@@ -53,7 +53,7 @@ def fetch_monthly_revenue_finmind(ticker: str, years: int = 3) -> pd.DataFrame:
     if token:
         dl.login_by_token(api_token=token)
 
-    start = (datetime.today().date().replace(day=1) - timedelta(days=365*years))
+    start = datetime(2023, 1, 1).date()
     raw = dl.taiwan_stock_month_revenue(stock_id=str(ticker), start_date=start.isoformat())
     if raw.empty:
         return pd.DataFrame(columns=["ticker","name","date","revenue"])
