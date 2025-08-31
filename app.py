@@ -188,7 +188,15 @@ with tab2:
         tickers_in_sector = (
             groups_df.query("sector == @sector")["ticker"].unique().tolist()
         )
-        ticker = st.selectbox("選個股 (Ticker)", options=tickers_in_sector)
+        ticker_name_map = {
+        t: f"{t} {groups_df.set_index('ticker').loc[t, 'name']}"
+        for t in tickers_in_sector
+        }
+        ticker = st.selectbox(
+            "選個股 (Ticker)",
+            options=list(ticker_name_map.keys()),
+            format_func=lambda x: ticker_name_map[x]
+        )
         name = groups_df.set_index("ticker").loc[ticker, "name"]
         stock_df = sector_df.query("ticker == @ticker")
 
