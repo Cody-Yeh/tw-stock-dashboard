@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import numpy as np
 import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 from datetime import datetime, timedelta
 
@@ -81,6 +82,43 @@ def fetch_monthly_revenue_finmind(ticker: str, years: int = 3) -> pd.DataFrame:
 
     out = out[need].sort_values("date").reset_index(drop=True)
     return out
+@st.cache_data(show_spinner=True, ttl=24*3600)
+def fetch_ohlc_finmind(ticker: str, start_date: datetime.date = datetime(2023, 1, 1).date()) -> pd.DataFrame:
+    """
+    從 FinMind 抓日 OHLC (open, high, low, close, volume) 用於 K 線圖
+    """
+    from FinMind.data import DataLoader
+    token = os.environ.get("FINMIND_TOKEN")
+    dl = DataLoader()
+    if token:
+        dl.login_by_token(api_token=token)
+
+    raw = dl.taiwan_stock_daily(
+        stock_id=str(ticker),
+        start_date=start_date.isoformat(),
+    )
+
+    if raw.empty:
+        return pd.DataFrame(columns=["date","open","high","low","close","volume"])
+
+    df = raw.rename(columns={
+        "date": "date",
+        "open": "open",
+        "max":  "high",
+        "high": "high",
+        "min":  "low",
+        "low":  "low",
+        "close":"close",
+        "Trading_Volume": "volume",
+        "volume": "volume",
+    })
+    df["date"] = pd.to_datetime(df["date"]).dt.date
+    need = ["date","open","high","low","close","volume"]
+    for c in need:
+        if c not in df.columns:
+            df[c] = np.nan
+    return df[need].dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+
 
 
 
@@ -199,6 +237,46 @@ with tab2:
         )
         name = groups_df.set_index("ticker").loc[ticker, "name"]
         stock_df = sector_df.query("ticker == @ticker")
+
+        with st.expander("📈 顯示 K 線圖（OHLC）", expanded=True):
+            today = datetime.today().date()
+            default_start = (today - timedelta(days=180))
+            dr = st.date_input("選擇日期區間", value=(default_start, today))
+            if isinstance(dr, tuple) and len(dr) == 2:
+                start_sel, end_sel = dr
+            else:
+                start_sel, end_sel = default_start, today
+
+            ohlc = fetch_ohlc_finmind(ticker, start_date=datetime(2023,1,1).date())
+            if not ohlc.empty:
+                mask = (ohlc["date"] >= start_sel) & (ohlc["date"] <= end_sel)
+                ohlc_sel = ohlc.loc[mask].copy()
+             # 移動平均（可選）
+                ohlc_sel["ma5"]  = pd.Series(ohlc_sel["close"]).rolling(5).mean()
+                ohlc_sel["ma20"] = pd.Series(ohlc_sel["close"]).rolling(20).mean()
+
+                fig_k = go.Figure()
+                fig_k.add_trace(go.Candlestick(
+                    x=ohlc_sel["date"],
+                    open=ohlc_sel["open"],
+                    high=ohlc_sel["high"],
+                    low=ohlc_sel["low"],
+                    close=ohlc_sel["close"],
+                    name="K線"
+                ))
+                fig_k.add_trace(go.Scatter(x=ohlc_sel["date"], y=ohlc_sel["ma5"],  mode="lines", name="MA5"))
+                fig_k.add_trace(go.Scatter(x=ohlc_sel["date"], y=ohlc_sel["ma20"], mode="lines", name="MA20"))
+
+                fig_k.update_layout(
+                    title=f"{ticker} {name} K 線圖（含 MA5/MA20）",
+                    xaxis_title="date",
+                    yaxis_title="price",
+                    xaxis_rangeslider_visible=False,
+                    hovermode="x unified",
+                )
+                st.plotly_chart(fig_k, use_container_width=True)
+            else:
+                st.info("此檔目前無法取得日 OHLC 資料（FinMind 回傳空）。")
 
         col1, col2 = st.columns([2,1])
         with col1:
