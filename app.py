@@ -66,7 +66,7 @@ def fetch_monthly_revenue_finmind(ticker: str, years: int = 3) -> pd.DataFrame:
         "stock_name": "name",
     })
     out["ticker"] = out["ticker"].astype(str)
-    out["date"] = (pd.to_datetime(out["date"]) - pd.offsets.MonthBegin(1)).date
+    out["date"] = (pd.to_datetime(out["date"]) - pd.offsets.MonthBegin(1)).dt.date
 
     # ① 這裡是重點：API 沒帶公司名時，用 groups.csv 裡的 name 來補
     name_map = groups_df.set_index("ticker")["name"].astype(str).to_dict()
